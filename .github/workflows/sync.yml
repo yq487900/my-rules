@@ -1,0 +1,44 @@
+name: Sync meta branch
+
+on:
+  schedule:
+    - cron: "0 1 * * *"        # UTC 01:00 = 北京时间 09:00
+  workflow_dispatch:             # 允许手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Clone source repo (meta branch)
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/src
+          git clone --depth 1 --branch meta https://github.com/MetaCubeX/meta-rules-dat.git /tmp/src
+
+      - name: Create clean meta branch and sync files
+        run: |
+          set -euo pipefail
+          git checkout --orphan meta
+          git rm -rf . || true
+          rsync -a --delete --exclude='.git' /tmp/src/ ./
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes, skipping commit."
+          else
+            git commit -m "Sync meta branch $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push -f origin meta
+          fi
