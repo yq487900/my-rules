@@ -23,22 +23,60 @@ jobs:
           rm -rf /tmp/src
           git clone --depth 1 --branch meta https://github.com/MetaCubeX/meta-rules-dat.git /tmp/src
 
-      - name: Create clean meta branch and sync files
-        run: |
-          set -euo pipefail
-          git checkout --orphan meta
-          git rm -rf . || true
-          rsync -a --delete --exclude='.git' /tmp/src/ ./
-
-      - name: Commit and push
+      - name: Build meta branch
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan meta
+          git rm -rf . || true
+          rsync -a --delete --exclude='.git' /tmp/src/ ./
           git add -A
           if git diff --cached --quiet; then
-            echo "No changes, skipping commit."
+            echo "meta: no changes"
           else
             git commit -m "Sync meta branch $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git push -f origin meta
+          fi
+
+      - name: Generate loon rules
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/loon
+          mkdir -p /tmp/loon
+          for base in geo-lite/geoip geo/geoip; do
+            cd "/tmp/src/$base"
+            find . -type f -name '*.list' -print0 | while IFS= read -r -d '' f; do
+              rel="${f#./}"
+              out="/tmp/loon/$base/$rel"
+              mkdir -p "$(dirname "$out")"
+              awk '{
+                if (index($0, ",") > 0) {
+                  addr = substr($0, index($0, ",") + 1)
+                } else {
+                  addr = $0
+                }
+                if (index(addr, ":") > 0)
+                  printf "IP-CIDR6,%s,no-resolve\n", addr
+                else
+                  printf "IP-CIDR,%s,no-resolve\n", addr
+              }' "$f" > "$out"
+            done
+          done
+          echo "Generated $(find /tmp/loon -type f | wc -l) files"
+
+      - name: Build loon branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan loon
+          git rm -rf . || true
+          rsync -a --delete --exclude='.git' /tmp/loon/ ./
+          git add -A
+          if git diff --cached --quiet; then
+            echo "loon: no changes"
+          else
+            git commit -m "Sync loon rules $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push -f origin loon
           fi
