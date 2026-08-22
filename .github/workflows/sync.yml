@@ -30,7 +30,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan meta
           git rm -rf . || true
-          rsync -a --delete --exclude='.git' /tmp/src/ ./
+          rsync -a --delete --exclude='.git' /tmp/src/geo-lite ./
+          rsync -a --delete --exclude='.git' /tmp/src/geo ./
           git add -A
           if git diff --cached --quiet; then
             echo "meta: no changes"
