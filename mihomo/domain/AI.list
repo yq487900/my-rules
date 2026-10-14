@@ -1,5 +1,7 @@
 # 域名后缀匹配
-# +.codebuddy.ai
-# +.workbuddy.ai
++.codebuddy.ai
++.workbuddy.ai
++.cloudcachetci.com
++.sc-rp.tencentcloud.com
 # 域名关键字匹配
 # DOMAIN-KEYWORD,1e100
